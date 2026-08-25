@@ -9,7 +9,6 @@ type Patient struct {
 	FirstName     string    `json:"firstname"`
 	LastName      string    `json:"lastname"`
 	Birthday      time.Time `json:"birthday"`
-	Guardian      string    `json:"guardian"`
 	Phone         string    `json:"phone"`
 	Email         string    `json:"email"`
 	Status        string    `json:"status"`
