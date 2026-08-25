@@ -6,12 +6,12 @@ import (
 	"mundoappointment.com/pkg/config"
 )
 
-func fetchPatients() []Patient {
+func fetchPatients() ([]Patient, error) {
 	var patients []Patient
-	_, err := config.Supabase.From("patients").Select("*", "exact", false).ExecuteTo(&patients)
+	_, err := config.GetDBClient().From("patients").Select("*", "exact", false).ExecuteTo(&patients)
 	if err != nil {
-		log.Fatalf("Could not fetch patients data %v", err.Error())
+		log.Printf("Could not fetch patients data %v", err.Error())
+		return nil, err
 	}
-	log.Printf("result %v", patients)
-	return patients
+	return patients, nil
 }

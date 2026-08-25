@@ -23,3 +23,7 @@ func CreateClient() {
 	}
 	log.Println("Connection to DB succesfully")
 }
+
+func GetDBClient() *supabase.Client {
+	return Supabase
+}
