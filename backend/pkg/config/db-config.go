@@ -1,7 +1,7 @@
 package config
 
 import (
-	"fmt"
+	"log"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -11,14 +11,15 @@ import (
 var Supabase *supabase.Client
 
 func CreateClient() {
-	err := godotenv.Load(".env")
+	err := godotenv.Load("../.env")
 	if err != nil {
-		fmt.Printf("Could not load .env file")
+		log.Fatalln("Could not load .env file")
 	}
 	url := os.Getenv("SUPABASE_URL")
 	key := os.Getenv("SUPABASE_KEY")
 	Supabase, err = supabase.NewClient(url, key, nil)
 	if err != nil {
-		fmt.Printf("Error during creation of client supabase")
+		log.Fatalf("Error during creation of client supabase %v", err.Error())
 	}
+	log.Println("Connection to DB succesfully")
 }

@@ -1,32 +1,17 @@
 package patients
 
 import (
-	"time"
+	"log"
+
+	"mundoappointment.com/pkg/config"
 )
 
-var InMemoryPatients = []Patient{
-	{
-		Id:            "1",
-		FirstName:     "Test",
-		LastName:      "One",
-		Birthday:      time.Date(1999, time.January, 1, 0, 0, 0, 0, time.UTC),
-		Phone:         "1234567890",
-		Email:         "test@test.com",
-		Status:        "Active",
-		AdmissionDate: time.Now(),
-	},
-	{
-		Id:            "2",
-		FirstName:     "Test",
-		LastName:      "Two",
-		Birthday:      time.Date(1999, time.January, 1, 0, 0, 0, 0, time.UTC),
-		Phone:         "1234567890",
-		Email:         "test@test.com",
-		Status:        "Active",
-		AdmissionDate: time.Now(),
-	},
-}
-
 func fetchPatients() []Patient {
-	return InMemoryPatients
+	var patients []Patient
+	_, err := config.Supabase.From("patients").Select("*", "exact", false).ExecuteTo(&patients)
+	if err != nil {
+		log.Fatalf("Could not fetch patients data %v", err.Error())
+	}
+	log.Printf("result %v", patients)
+	return patients
 }
