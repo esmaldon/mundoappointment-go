@@ -6,4 +6,5 @@ import (
 
 func InitPatiantsRoutes(e *gin.Engine) {
 	e.GET("/patients", getPatients)
+	e.POST("/patients", addPatient)
 }

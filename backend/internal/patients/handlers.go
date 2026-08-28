@@ -16,3 +16,21 @@ func getPatients(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, patients)
 }
+
+func addPatient(c *gin.Context) {
+	var reqPatient PatientDB
+	if err := c.BindJSON(&reqPatient); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+	}
+	patient, err := createPatient(reqPatient)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+	}
+	c.JSON(http.StatusCreated, patient)
+}
