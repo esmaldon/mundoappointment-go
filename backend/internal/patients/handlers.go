@@ -1,84 +1,119 @@
 package patients
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-func getPatients(c *gin.Context) {
-	patients, err := fetchPatients()
+type handler struct {
+	s *store
+}
+
+func NewHandler(s *store) *handler {
+	return &handler{
+		s: s,
+	}
+}
+
+func (h *handler) getPatients(c *gin.Context) {
+	patients, err := h.s.fetchPatients()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
+		return
 	}
 	c.JSON(http.StatusOK, patients)
 }
 
-func getPatient(c *gin.Context) {
+func (h *handler) getPatient(c *gin.Context) {
 	id := c.Param("id")
-	patient, err := fetchPatient(id)
+	patient, err := h.s.fetchPatient(id)
 	if err != nil {
+		if errors.Is(err, ErrorPatientNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
+		return
 	}
-	if patient.FirstName == "" {
-		c.JSON(http.StatusNotFound, "")
-	}
+
 	c.JSON(http.StatusOK, patient)
 }
 
-func addPatient(c *gin.Context) {
-	var reqPatient PatientDB
-	if err := c.BindJSON(&reqPatient); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
-	}
-	patient, err := createPatient(reqPatient)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
-	}
-	c.JSON(http.StatusCreated, patient)
-}
-
-func removePatient(c *gin.Context) {
-	id := c.Param("id")
-	patientId, err := deletePatient(id)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
-	}
-	if patientId == 0 {
-		c.JSON(http.StatusNotFound, "")
-	}
-	c.JSON(http.StatusOK, patientId)
-}
-
-func changePatient(c *gin.Context) {
+func (h *handler) addPatient(c *gin.Context) {
 	var reqPatient Patient
 	if err := c.BindJSON(&reqPatient); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
+		return
 	}
-	patientUpdated, err := updatePatient(reqPatient)
+	patient, err := h.s.createPatient(reqPatient)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
+		return
+	}
+	c.JSON(http.StatusCreated, patient)
+}
+
+func (h *handler) removePatient(c *gin.Context) {
+	id := c.Param("id")
+	patientId, err := h.s.deletePatient(id)
+	if err != nil {
+		if errors.Is(err, ErrorPatientNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, patientId)
+}
+
+func (h *handler) changePatient(c *gin.Context) {
+	id := c.Param("id")
+	var reqPatient Patient
+	if err := c.BindJSON(&reqPatient); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	patientUpdated, err := h.s.updatePatient(id, reqPatient)
+	if err != nil {
+		if errors.Is(err, ErrorPatientNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
 	}
 	c.JSON(http.StatusOK, patientUpdated)
 }
