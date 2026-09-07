@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"mundoappointment.com/pkg/httpmessage"
 )
 
 type handler struct {
@@ -20,13 +21,10 @@ func NewHandler(s *store) *handler {
 func (h *handler) getPatients(c *gin.Context) {
 	patients, err := h.s.fetchPatients()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		httpmessage.Fail(c, http.StatusInternalServerError, "500", err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, patients)
+	httpmessage.OK(c, patients)
 }
 
 func (h *handler) getPatient(c *gin.Context) {
@@ -34,40 +32,28 @@ func (h *handler) getPatient(c *gin.Context) {
 	patient, err := h.s.fetchPatient(id)
 	if err != nil {
 		if errors.Is(err, ErrorPatientNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"success": false,
-				"message": err.Error(),
-			})
+			httpmessage.Fail(c, http.StatusNotFound, "404", err.Error())
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		httpmessage.Fail(c, http.StatusInternalServerError, "500", err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, patient)
+	httpmessage.OK(c, patient)
 }
 
 func (h *handler) addPatient(c *gin.Context) {
 	var reqPatient Patient
 	if err := c.BindJSON(&reqPatient); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		httpmessage.Fail(c, http.StatusInternalServerError, "500", err.Error())
 		return
 	}
 	patient, err := h.s.createPatient(reqPatient)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		httpmessage.Fail(c, http.StatusInternalServerError, "500", err.Error())
 		return
 	}
-	c.JSON(http.StatusCreated, patient)
+	httpmessage.OK(c, patient)
 }
 
 func (h *handler) removePatient(c *gin.Context) {
@@ -75,44 +61,29 @@ func (h *handler) removePatient(c *gin.Context) {
 	patientId, err := h.s.deletePatient(id)
 	if err != nil {
 		if errors.Is(err, ErrorPatientNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"success": false,
-				"message": err.Error(),
-			})
+			httpmessage.Fail(c, http.StatusNotFound, "404", err.Error())
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		httpmessage.Fail(c, http.StatusInternalServerError, "500", err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, patientId)
+	httpmessage.OK(c, patientId)
 }
 
 func (h *handler) changePatient(c *gin.Context) {
 	id := c.Param("id")
 	var reqPatient Patient
 	if err := c.BindJSON(&reqPatient); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		httpmessage.Fail(c, http.StatusInternalServerError, "500", err.Error())
 		return
 	}
 	patientUpdated, err := h.s.updatePatient(id, reqPatient)
 	if err != nil {
 		if errors.Is(err, ErrorPatientNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"success": false,
-				"message": err.Error(),
-			})
+			httpmessage.Fail(c, http.StatusNotFound, "404", err.Error())
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		httpmessage.Fail(c, http.StatusInternalServerError, "500", err.Error())
 		return
 	}
 	c.JSON(http.StatusOK, patientUpdated)
