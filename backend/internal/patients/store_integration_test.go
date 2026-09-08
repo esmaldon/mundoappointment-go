@@ -4,9 +4,11 @@ package patients
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
 	"testing"
+	"time"
 
 	"mundoappointment.com/pkg/config"
 )
@@ -14,14 +16,12 @@ import (
 func TestStorePatientCRUD(t *testing.T) {
 	s := newIntegrationStore(t)
 
-	input := Patient{
-		FirstName:     "Integration",
-		LastName:      "Test",
-		Birthday:      "1990-01-01",
-		Phone:         "5555555555",
-		Email:         "integration@example.com",
-		Status:        "Active",
-		AdmissionDate: "2026-01-01",
+	input := CreatePatientRequest{
+		FirstName: "Integration",
+		LastName:  "Test",
+		Birthday:  "1990-01-01",
+		Phone:     "5555555555",
+		Email:     fmt.Sprintf("integration-%d@example.com", time.Now().UnixNano()),
 	}
 
 	created, err := s.createPatient(input)
@@ -56,8 +56,11 @@ func TestStorePatientCRUD(t *testing.T) {
 		t.Errorf("expected email %q, got %q", input.Email, fetched.Email)
 	}
 
-	fetched.Phone = "9999999999"
-	updated, err := s.updatePatient(id, fetched)
+	newPhone := "9999999999"
+	updateReq := UpdatePatientRequest{
+		Phone: &newPhone,
+	}
+	updated, err := s.updatePatient(id, updateReq)
 	if err != nil {
 		t.Fatalf("error during update of patient. %v", err)
 	}
@@ -91,8 +94,8 @@ func TestStorePatientCRUD(t *testing.T) {
 	deleted = true
 
 	_, err = s.fetchPatient(id)
-	if err != nil && !errors.Is(err, ErrorPatientNotFound) {
-		t.Fatalf("error during fetch patient by id. %v", err)
+	if !errors.Is(err, ErrorPatientNotFound) {
+		t.Fatalf("expected ErrorPatientNotFound after deletion. got %v", err)
 	}
 }
 

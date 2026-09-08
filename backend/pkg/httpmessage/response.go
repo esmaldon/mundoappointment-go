@@ -17,7 +17,7 @@ type ErrorInfo struct {
 	Message string `json:"message"`
 }
 
-func OK(c *gin.Context, data any) {
+func Success(c *gin.Context, status int, data any) {
 	c.JSON(http.StatusOK, data)
 }
 

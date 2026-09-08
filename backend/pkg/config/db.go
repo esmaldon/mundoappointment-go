@@ -71,7 +71,7 @@ func (d *DBClient) FetchById[T any](table, id string) (T, error) {
 	return result[0], nil
 }
 
-func (d *DBClient) Create[T any](table string, obj T) ([]T, error) {
+func (d *DBClient) Create[T any](table string, obj any) ([]T, error) {
 	var result []T
 	data, count, err := d.Supabase.From(table).Insert(obj, false, "", "representation", "exact").Execute()
 	if err != nil {
@@ -107,10 +107,10 @@ func (d *DBClient) Delete(table, id string) (string, error) {
 	return id, nil
 }
 
-func (d *DBClient) Update[T any](table, id string, obj T) (T, error) {
+func (d *DBClient) Update[T any](table, id string, obj any) (T, error) {
 	var result []T
 	var zero T
-	data, count, err := d.Supabase.From(table).Update(obj, "", "exact").Filter("id", "eq", id).Execute()
+	data, count, err := d.Supabase.From(table).Update(obj, "representation", "exact").Filter("id", "eq", id).Execute()
 	if err != nil {
 		return zero, err
 	}
@@ -123,6 +123,9 @@ func (d *DBClient) Update[T any](table, id string, obj T) (T, error) {
 	err = json.Unmarshal(data, &result)
 	if err != nil {
 		return zero, err
+	}
+	if len(result) == 0 {
+		return zero, fmt.Errorf("%w: id=%s", ErrorRecordNotFound, id)
 	}
 
 	return result[0], nil

@@ -21,10 +21,10 @@ func NewHandler(s *store) *handler {
 func (h *handler) getPatients(c *gin.Context) {
 	patients, err := h.s.fetchPatients()
 	if err != nil {
-		httpmessage.Fail(c, http.StatusInternalServerError, "500", err.Error())
+		httpmessage.Fail(c, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
-	httpmessage.OK(c, patients)
+	httpmessage.Success(c, http.StatusOK, patients)
 }
 
 func (h *handler) getPatient(c *gin.Context) {
@@ -32,28 +32,28 @@ func (h *handler) getPatient(c *gin.Context) {
 	patient, err := h.s.fetchPatient(id)
 	if err != nil {
 		if errors.Is(err, ErrorPatientNotFound) {
-			httpmessage.Fail(c, http.StatusNotFound, "404", err.Error())
+			httpmessage.Fail(c, http.StatusNotFound, "NOT_FOUND", err.Error())
 			return
 		}
-		httpmessage.Fail(c, http.StatusInternalServerError, "500", err.Error())
+		httpmessage.Fail(c, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
 
-	httpmessage.OK(c, patient)
+	httpmessage.Success(c, http.StatusOK, patient)
 }
 
 func (h *handler) addPatient(c *gin.Context) {
-	var reqPatient Patient
-	if err := c.BindJSON(&reqPatient); err != nil {
-		httpmessage.Fail(c, http.StatusInternalServerError, "500", err.Error())
+	var req CreatePatientRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpmessage.Fail(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
 	}
-	patient, err := h.s.createPatient(reqPatient)
+	patient, err := h.s.createPatient(req)
 	if err != nil {
-		httpmessage.Fail(c, http.StatusInternalServerError, "500", err.Error())
+		httpmessage.Fail(c, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
-	httpmessage.OK(c, patient)
+	httpmessage.Success(c, http.StatusCreated, patient)
 }
 
 func (h *handler) removePatient(c *gin.Context) {
@@ -61,29 +61,33 @@ func (h *handler) removePatient(c *gin.Context) {
 	patientId, err := h.s.deletePatient(id)
 	if err != nil {
 		if errors.Is(err, ErrorPatientNotFound) {
-			httpmessage.Fail(c, http.StatusNotFound, "404", err.Error())
+			httpmessage.Fail(c, http.StatusNotFound, "NOT_FOUND", err.Error())
 			return
 		}
-		httpmessage.Fail(c, http.StatusInternalServerError, "500", err.Error())
+		httpmessage.Fail(c, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
-	httpmessage.OK(c, patientId)
+	httpmessage.Success(c, http.StatusOK, patientId)
 }
 
 func (h *handler) changePatient(c *gin.Context) {
 	id := c.Param("id")
-	var reqPatient Patient
-	if err := c.BindJSON(&reqPatient); err != nil {
-		httpmessage.Fail(c, http.StatusInternalServerError, "500", err.Error())
+	var req UpdatePatientRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpmessage.Fail(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
 	}
-	patientUpdated, err := h.s.updatePatient(id, reqPatient)
+	if req.IsEmpty() {
+		httpmessage.Fail(c, http.StatusBadRequest, "EMPTY_REQUEST", "at least one field should be provided for update")
+		return
+	}
+	patientUpdated, err := h.s.updatePatient(id, req)
 	if err != nil {
 		if errors.Is(err, ErrorPatientNotFound) {
-			httpmessage.Fail(c, http.StatusNotFound, "404", err.Error())
+			httpmessage.Fail(c, http.StatusNotFound, "NOT_FOUND", err.Error())
 			return
 		}
-		httpmessage.Fail(c, http.StatusInternalServerError, "500", err.Error())
+		httpmessage.Fail(c, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
 	c.JSON(http.StatusOK, patientUpdated)

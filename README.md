@@ -14,8 +14,15 @@ The backend structure is organized by domain, and each domain is divided into la
 - **Handlers**: Entre point of any requests and responsable to send a response to client
 - **Store**: Responsable to send request to DB to fetch data
 
+### API
+
+**Patient**
+Patient admission date
+
 
 ## TODO
 - [ ] Init Frontend side
 - [ ] Add more integration test to patients domain
 - [ ] Verify from gin docs if any change is needed to imporve the code
+- [ ] Add CI/CD
+- [ ] Investigate cloud provider

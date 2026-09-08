@@ -2,6 +2,7 @@ package patients
 
 import (
 	"errors"
+	"time"
 
 	"mundoappointment.com/pkg/config"
 )
@@ -36,8 +37,17 @@ func (s *store) fetchPatient(patientId string) (Patient, error) {
 	return patient, nil
 }
 
-func (s *store) createPatient(patient Patient) ([]Patient, error) {
-	return s.db.Create(patientTableName, patient)
+func (s *store) createPatient(req CreatePatientRequest) ([]Patient, error) {
+	newPatient := Patient{
+		FirstName:     req.FirstName,
+		LastName:      req.LastName,
+		Birthday:      req.Birthday,
+		Phone:         req.Phone,
+		Email:         req.Email,
+		Status:        "Active",
+		AdmissionDate: time.Now().Format("2006-01-02"),
+	}
+	return s.db.Create[Patient](patientTableName, newPatient)
 }
 
 func (s *store) deletePatient(patientId string) (string, error) {
@@ -51,8 +61,8 @@ func (s *store) deletePatient(patientId string) (string, error) {
 	return patient, nil
 }
 
-func (s *store) updatePatient(patientId string, patient Patient) (Patient, error) {
-	patientUpdated, err := s.db.Update(patientTableName, patientId, patient)
+func (s *store) updatePatient(patientId string, req UpdatePatientRequest) (Patient, error) {
+	patientUpdated, err := s.db.Update[Patient](patientTableName, patientId, req)
 	if err != nil {
 		if errors.Is(err, config.ErrorRecordNotFound) {
 			return Patient{}, ErrorPatientNotFound
