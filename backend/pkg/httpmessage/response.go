@@ -1,10 +1,6 @@
 package httpmessage
 
-import (
-	"net/http"
-
-	"github.com/gin-gonic/gin"
-)
+import "github.com/gin-gonic/gin"
 
 type Response struct {
 	Success bool       `json:"success"`
@@ -18,7 +14,7 @@ type ErrorInfo struct {
 }
 
 func Success(c *gin.Context, status int, data any) {
-	c.JSON(http.StatusOK, data)
+	c.JSON(status, data)
 }
 
 func Fail(c *gin.Context, status int, code, message string) {

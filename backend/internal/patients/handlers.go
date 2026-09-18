@@ -8,11 +8,19 @@ import (
 	"mundoappointment.com/pkg/httpmessage"
 )
 
-type handler struct {
-	s *store
+type patientStore interface {
+	fetchPatients() ([]Patient, error)
+	fetchPatient(string) (Patient, error)
+	createPatient(CreatePatientRequest) ([]Patient, error)
+	deletePatient(string) (string, error)
+	updatePatient(string, UpdatePatientRequest) (Patient, error)
 }
 
-func NewHandler(s *store) *handler {
+type handler struct {
+	s patientStore
+}
+
+func NewHandler(s patientStore) *handler {
 	return &handler{
 		s: s,
 	}
