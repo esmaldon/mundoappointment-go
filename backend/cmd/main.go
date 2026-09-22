@@ -16,6 +16,7 @@ func main() {
 	}
 	// Start Server
 	router := gin.Default()
-	patients.InitPatiantsRoutes(router, db)
+	v1 := router.Group("/api/v1")
+	patients.InitPatiantsRoutes(v1, db)
 	router.Run()
 }

@@ -3,6 +3,7 @@ package patients
 import (
 	"errors"
 	"time"
+	"uuid"
 
 	"mundoappointment.com/pkg/config"
 )
@@ -21,12 +22,12 @@ func NewStore(db *config.DBClient) *store {
 	}
 }
 
-func (s *store) fetchPatients() ([]Patient, error) {
-	return s.db.FetchAll[Patient](patientTableName)
+func (s *store) fetchPatients(clinicId string) ([]Patient, error) {
+	return s.db.FetchAll[Patient](patientTableName, clinicId)
 }
 
-func (s *store) fetchPatient(patientId string) (Patient, error) {
-	patient, err := s.db.FetchById[Patient](patientTableName, patientId)
+func (s *store) fetchPatient(patientId, clinicId string) (Patient, error) {
+	patient, err := s.db.FetchById[Patient](patientTableName, patientId, clinicId)
 	if err != nil {
 		if errors.Is(err, config.ErrorRecordNotFound) {
 			return Patient{}, ErrorPatientNotFound
@@ -37,7 +38,12 @@ func (s *store) fetchPatient(patientId string) (Patient, error) {
 	return patient, nil
 }
 
-func (s *store) createPatient(req CreatePatientRequest) ([]Patient, error) {
+func (s *store) createPatient(req CreatePatientRequest, clinicId string) ([]Patient, error) {
+	cId, err := uuid.Parse(clinicId)
+	if err != nil {
+		return nil, err
+	}
+
 	newPatient := Patient{
 		FirstName:     req.FirstName,
 		LastName:      req.LastName,
@@ -46,12 +52,13 @@ func (s *store) createPatient(req CreatePatientRequest) ([]Patient, error) {
 		Email:         req.Email,
 		Status:        "Active",
 		AdmissionDate: time.Now().Format("2006-01-02"),
+		ClinicId:      cId,
 	}
 	return s.db.Create[Patient](patientTableName, newPatient)
 }
 
-func (s *store) deletePatient(patientId string) (string, error) {
-	patient, err := s.db.Delete(patientTableName, patientId)
+func (s *store) deletePatient(patientId, clinicId string) (string, error) {
+	patient, err := s.db.Delete(patientTableName, patientId, clinicId)
 	if err != nil {
 		if errors.Is(err, config.ErrorRecordNotFound) {
 			return patientId, ErrorPatientNotFound
@@ -61,8 +68,8 @@ func (s *store) deletePatient(patientId string) (string, error) {
 	return patient, nil
 }
 
-func (s *store) updatePatient(patientId string, req UpdatePatientRequest) (Patient, error) {
-	patientUpdated, err := s.db.Update[Patient](patientTableName, patientId, req)
+func (s *store) updatePatient(req UpdatePatientRequest, patientId, clinicId string) (Patient, error) {
+	patientUpdated, err := s.db.Update[Patient](patientTableName, patientId, clinicId, req)
 	if err != nil {
 		if errors.Is(err, config.ErrorRecordNotFound) {
 			return Patient{}, ErrorPatientNotFound

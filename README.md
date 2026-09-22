@@ -23,6 +23,12 @@ Patient admission date
 ## TODO
 - [ ] Init Frontend side
 - [ ] Add more integration test to patients domain
-- [ ] Verify from gin docs if any change is needed to imporve the code
-- [ ] Add CI/CD
-- [ ] Investigate cloud provider
+- [x] Verify from gin docs if any change is needed to imporve the code
+- [x] Add CI/CD
+- [ ] Set url prefix in routs api/v1
+- [ ] Update patient model to add clinic_id
+- [ ] Add clinic model
+- [ ] update patient routes to add clinic specification
+- [ ] update handlers to use clinicId on all patient CRUD op
+- [ ] update store to use clinicId to filter all patients of that are in the same clinic
+- [ ] 

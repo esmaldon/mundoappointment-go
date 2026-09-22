@@ -9,11 +9,11 @@ import (
 )
 
 type patientStore interface {
-	fetchPatients() ([]Patient, error)
-	fetchPatient(string) (Patient, error)
-	createPatient(CreatePatientRequest) ([]Patient, error)
-	deletePatient(string) (string, error)
-	updatePatient(string, UpdatePatientRequest) (Patient, error)
+	fetchPatients(string) ([]Patient, error)
+	fetchPatient(string, string) (Patient, error)
+	createPatient(CreatePatientRequest, string) ([]Patient, error)
+	deletePatient(string, string) (string, error)
+	updatePatient(UpdatePatientRequest, string, string) (Patient, error)
 }
 
 type handler struct {
@@ -27,7 +27,8 @@ func NewHandler(s patientStore) *handler {
 }
 
 func (h *handler) getPatients(c *gin.Context) {
-	patients, err := h.s.fetchPatients()
+	clinicId := c.Param("clinicid")
+	patients, err := h.s.fetchPatients(clinicId)
 	if err != nil {
 		httpmessage.Fail(c, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
@@ -37,7 +38,8 @@ func (h *handler) getPatients(c *gin.Context) {
 
 func (h *handler) getPatient(c *gin.Context) {
 	id := c.Param("id")
-	patient, err := h.s.fetchPatient(id)
+	clinicId := c.Param("clinicid")
+	patient, err := h.s.fetchPatient(id, clinicId)
 	if err != nil {
 		if errors.Is(err, ErrorPatientNotFound) {
 			httpmessage.Fail(c, http.StatusNotFound, "NOT_FOUND", err.Error())
@@ -51,12 +53,13 @@ func (h *handler) getPatient(c *gin.Context) {
 }
 
 func (h *handler) addPatient(c *gin.Context) {
+	clinicId := c.Param("clinicid")
 	var req CreatePatientRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		httpmessage.Fail(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
 	}
-	patient, err := h.s.createPatient(req)
+	patient, err := h.s.createPatient(req, clinicId)
 	if err != nil {
 		httpmessage.Fail(c, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
@@ -66,7 +69,8 @@ func (h *handler) addPatient(c *gin.Context) {
 
 func (h *handler) removePatient(c *gin.Context) {
 	id := c.Param("id")
-	patientId, err := h.s.deletePatient(id)
+	clinicId := c.Param("clinicid")
+	patientId, err := h.s.deletePatient(id, clinicId)
 	if err != nil {
 		if errors.Is(err, ErrorPatientNotFound) {
 			httpmessage.Fail(c, http.StatusNotFound, "NOT_FOUND", err.Error())
@@ -80,6 +84,7 @@ func (h *handler) removePatient(c *gin.Context) {
 
 func (h *handler) changePatient(c *gin.Context) {
 	id := c.Param("id")
+	clinicId := c.Param("clinicid")
 	var req UpdatePatientRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		httpmessage.Fail(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
@@ -89,7 +94,7 @@ func (h *handler) changePatient(c *gin.Context) {
 		httpmessage.Fail(c, http.StatusBadRequest, "EMPTY_REQUEST", "at least one field should be provided for update")
 		return
 	}
-	patientUpdated, err := h.s.updatePatient(id, req)
+	patientUpdated, err := h.s.updatePatient(req, id, clinicId)
 	if err != nil {
 		if errors.Is(err, ErrorPatientNotFound) {
 			httpmessage.Fail(c, http.StatusNotFound, "NOT_FOUND", err.Error())

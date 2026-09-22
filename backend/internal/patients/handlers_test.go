@@ -16,26 +16,26 @@ type patientStoreStub struct {
 	updatePatientFunc func(string, UpdatePatientRequest) (Patient, error)
 }
 
-func (s *patientStoreStub) fetchPatients() ([]Patient, error) {
+func (s *patientStoreStub) fetchPatients(clinicId string) ([]Patient, error) {
 	panic("unexpected call to fetchPatients")
 }
 
-func (s *patientStoreStub) fetchPatient(string) (Patient, error) {
+func (s *patientStoreStub) fetchPatient(id, clinicId string) (Patient, error) {
 	panic("unexpected call to fetchPatient")
 }
 
-func (s *patientStoreStub) createPatient(req CreatePatientRequest) ([]Patient, error) {
+func (s *patientStoreStub) createPatient(req CreatePatientRequest, clinicId string) ([]Patient, error) {
 	if s.createPatientFunc == nil {
 		panic("unexpected call to createPatient")
 	}
 	return s.createPatientFunc(req)
 }
 
-func (s *patientStoreStub) deletePatient(string) (string, error) {
+func (s *patientStoreStub) deletePatient(id, clinicId string) (string, error) {
 	panic("unexpected call to deletePatient")
 }
 
-func (s *patientStoreStub) updatePatient(id string, req UpdatePatientRequest) (Patient, error) {
+func (s *patientStoreStub) updatePatient(req UpdatePatientRequest, id, clinicId string) (Patient, error) {
 	if s.updatePatientFunc == nil {
 		panic("unexpected call to updatePatient")
 	}

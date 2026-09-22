@@ -1,14 +1,17 @@
 package patients
 
+import "uuid"
+
 type Patient struct {
-	Id            *int   `json:"id,omitempty"`
-	FirstName     string `json:"firstname"`
-	LastName      string `json:"lastname"`
-	Birthday      string `json:"birthday"`
-	Phone         string `json:"phone"`
-	Email         string `json:"email"`
-	Status        string `json:"status"`
-	AdmissionDate string `json:"admissiondate"`
+	Id            *int      `json:"id,omitempty"`
+	FirstName     string    `json:"firstname"`
+	LastName      string    `json:"lastname"`
+	Birthday      string    `json:"birthday"`
+	Phone         string    `json:"phone"`
+	Email         string    `json:"email"`
+	Status        string    `json:"status"`
+	AdmissionDate string    `json:"admissiondate"`
+	ClinicId      uuid.UUID `json:clinic_id`
 }
 
 type CreatePatientRequest struct {
@@ -28,7 +31,7 @@ type UpdatePatientRequest struct {
 	Status    *string `json:"status,omitempty" binding:"omitempty,oneof=Active Inactive"`
 }
 
-func (u UpdatePatientRequest) IsEmpty() bool {
+func (u *UpdatePatientRequest) IsEmpty() bool {
 	return u.FirstName == nil &&
 		u.LastName == nil &&
 		u.Birthday == nil &&

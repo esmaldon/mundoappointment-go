@@ -35,19 +35,20 @@ func TestStorePatientCRUD(t *testing.T) {
 		t.Fatalf("expected id in patient created")
 	}
 	id := strconv.Itoa(*created[0].Id)
+	clinicId := created[0].clinicId
 	deleted := false
 	t.Cleanup(func() {
 		if deleted {
 			return
 		}
 
-		_, cleanupErr := s.deletePatient(id)
+		_, cleanupErr := s.deletePatient(id, clinicId)
 		if cleanupErr != nil && !errors.Is(cleanupErr, ErrorPatientNotFound) {
 			t.Errorf("expected cleanup of patient created. %v", cleanupErr)
 		}
 	})
 
-	fetched, err := s.fetchPatient(id)
+	fetched, err := s.fetchPatient(id, clinicId)
 	if err != nil {
 		t.Fatalf("error during fetch of patient. %v", err)
 	}
@@ -60,7 +61,7 @@ func TestStorePatientCRUD(t *testing.T) {
 	updateReq := UpdatePatientRequest{
 		Phone: &newPhone,
 	}
-	updated, err := s.updatePatient(id, updateReq)
+	updated, err := s.updatePatient(updateReq, id, clinicId)
 	if err != nil {
 		t.Fatalf("error during update of patient. %v", err)
 	}
@@ -69,7 +70,7 @@ func TestStorePatientCRUD(t *testing.T) {
 		t.Errorf("expected phone 9999999999, got %q", updated.Phone)
 	}
 
-	allPatients, err := s.fetchPatients()
+	allPatients, err := s.fetchPatients(clinicId)
 	if err != nil {
 		t.Fatalf("error during fetch all patients. %v", err)
 	}
@@ -84,7 +85,7 @@ func TestStorePatientCRUD(t *testing.T) {
 		t.Errorf("expected patient created during fetch all patients")
 	}
 
-	deletedId, err := s.deletePatient(id)
+	deletedId, err := s.deletePatient(id, clinicId)
 	if err != nil {
 		t.Fatalf("error during delete of patient. %v", err)
 	}
@@ -93,7 +94,7 @@ func TestStorePatientCRUD(t *testing.T) {
 	}
 	deleted = true
 
-	_, err = s.fetchPatient(id)
+	_, err = s.fetchPatient(id, clinicId)
 	if !errors.Is(err, ErrorPatientNotFound) {
 		t.Fatalf("expected ErrorPatientNotFound after deletion. got %v", err)
 	}

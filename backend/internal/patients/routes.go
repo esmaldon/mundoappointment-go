@@ -5,13 +5,13 @@ import (
 	"mundoappointment.com/pkg/config"
 )
 
-func InitPatiantsRoutes(e *gin.Engine, db *config.DBClient) {
+func InitPatiantsRoutes(e *gin.RouterGroup, db *config.DBClient) {
 	s := NewStore(db)
 	h := NewHandler(s)
 
-	e.GET("/patients", h.getPatients)
-	e.GET("/patients/:id", h.getPatient)
-	e.POST("/patients", h.addPatient)
-	e.PATCH("/patients/:id", h.changePatient)
-	e.DELETE("/patients/:id", h.removePatient)
+	e.GET("/clinic/:clinicid/patients", h.getPatients)
+	e.GET("/clinic/:clinicid/patients/:id", h.getPatient)
+	e.POST("/clinic/:clinicid/patients", h.addPatient)
+	e.PATCH("/clinic/:clinicid/patients/:id", h.changePatient)
+	e.DELETE("/clinic/:clinicid/patients/:id", h.removePatient)
 }

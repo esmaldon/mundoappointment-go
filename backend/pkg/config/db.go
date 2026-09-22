@@ -33,9 +33,9 @@ func NewDBClient() (*DBClient, error) {
 	}, nil
 }
 
-func (d *DBClient) FetchAll[T any](table string) ([]T, error) {
+func (d *DBClient) FetchAll[T any](table, clinicId string) ([]T, error) {
 	var result []T
-	data, _, err := d.Supabase.From(table).Select("*", "exact", false).Execute()
+	data, _, err := d.Supabase.From(table).Select("*", "exact", false).Filter("clinic_id", "eq", clinicId).Execute()
 	if err != nil {
 		return result, err
 	}
@@ -47,10 +47,10 @@ func (d *DBClient) FetchAll[T any](table string) ([]T, error) {
 	return result, nil
 }
 
-func (d *DBClient) FetchById[T any](table, id string) (T, error) {
+func (d *DBClient) FetchById[T any](table, id, clinicId string) (T, error) {
 	var result []T
 	var zero T
-	data, count, err := d.Supabase.From(table).Select("*", "exact", false).Filter("id", "eq", id).Execute()
+	data, count, err := d.Supabase.From(table).Select("*", "exact", false).Filter("id", "eq", id).Filter("clinic_id", "eq", clinicId).Execute()
 	if err != nil {
 		return zero, err
 	}
@@ -91,9 +91,9 @@ func (d *DBClient) Create[T any](table string, obj any) ([]T, error) {
 	return result, nil
 }
 
-func (d *DBClient) Delete(table, id string) (string, error) {
+func (d *DBClient) Delete(table, id, clinicId string) (string, error) {
 	var zero string
-	_, count, err := d.Supabase.From(table).Delete("", "exact").Filter("id", "eq", id).Execute()
+	_, count, err := d.Supabase.From(table).Delete("", "exact").Filter("id", "eq", id).Filter("clinic_id", "eq", clinicId).Execute()
 	if err != nil {
 		return zero, err
 	}
@@ -107,10 +107,10 @@ func (d *DBClient) Delete(table, id string) (string, error) {
 	return id, nil
 }
 
-func (d *DBClient) Update[T any](table, id string, obj any) (T, error) {
+func (d *DBClient) Update[T any](table, id, clinicId string, obj any) (T, error) {
 	var result []T
 	var zero T
-	data, count, err := d.Supabase.From(table).Update(obj, "representation", "exact").Filter("id", "eq", id).Execute()
+	data, count, err := d.Supabase.From(table).Update(obj, "representation", "exact").Filter("id", "eq", id).Filter("clinic_id", "eq", clinicId).Execute()
 	if err != nil {
 		return zero, err
 	}
