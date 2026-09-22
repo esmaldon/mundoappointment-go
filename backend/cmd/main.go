@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
+	"mundoappointment.com/clinics"
 	"mundoappointment.com/patients"
 	"mundoappointment.com/pkg/config"
 )
@@ -18,5 +19,6 @@ func main() {
 	router := gin.Default()
 	v1 := router.Group("/api/v1")
 	patients.InitPatiantsRoutes(v1, db)
+	clinics.InitClinicRoutes(v1, db)
 	router.Run()
 }

@@ -33,7 +33,21 @@ func NewDBClient() (*DBClient, error) {
 	}, nil
 }
 
-func (d *DBClient) FetchAll[T any](table, clinicId string) ([]T, error) {
+func (d *DBClient) FetchAll[T any](table string) ([]T, error) {
+	var result []T
+	data, _, err := d.Supabase.From(table).Select("*", "exact", false).Execute()
+	if err != nil {
+		return result, err
+	}
+	err = json.Unmarshal(data, &result)
+	if err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
+
+func (d *DBClient) FetchAllByClinic[T any](table, clinicId string) ([]T, error) {
 	var result []T
 	data, _, err := d.Supabase.From(table).Select("*", "exact", false).Filter("clinic_id", "eq", clinicId).Execute()
 	if err != nil {
@@ -47,10 +61,34 @@ func (d *DBClient) FetchAll[T any](table, clinicId string) ([]T, error) {
 	return result, nil
 }
 
-func (d *DBClient) FetchById[T any](table, id, clinicId string) (T, error) {
+func (d *DBClient) FetchByIdAndClinicId[T any](table, id, clinicId string) (T, error) {
 	var result []T
 	var zero T
 	data, count, err := d.Supabase.From(table).Select("*", "exact", false).Filter("id", "eq", id).Filter("clinic_id", "eq", clinicId).Execute()
+	if err != nil {
+		return zero, err
+	}
+	if count == 0 {
+		return zero, fmt.Errorf("%w: id=%s", ErrorRecordNotFound, id)
+	}
+	if count > 1 {
+		return zero, fmt.Errorf("warning, search returned more than one record. Total of records %v", count)
+	}
+	err = json.Unmarshal(data, &result)
+	if err != nil {
+		return zero, err
+	}
+	if len(result) == 0 {
+		return zero, fmt.Errorf("%w: id=%s", ErrorRecordNotFound, id)
+	}
+
+	return result[0], nil
+}
+
+func (d *DBClient) FetchById[T any](table, id string) (T, error) {
+	var result []T
+	var zero T
+	data, count, err := d.Supabase.From(table).Select("*", "exact", false).Filter("id", "eq", id).Execute()
 	if err != nil {
 		return zero, err
 	}
@@ -91,7 +129,7 @@ func (d *DBClient) Create[T any](table string, obj any) ([]T, error) {
 	return result, nil
 }
 
-func (d *DBClient) Delete(table, id, clinicId string) (string, error) {
+func (d *DBClient) DeleteByClinicId(table, id, clinicId string) (string, error) {
 	var zero string
 	_, count, err := d.Supabase.From(table).Delete("", "exact").Filter("id", "eq", id).Filter("clinic_id", "eq", clinicId).Execute()
 	if err != nil {
@@ -107,10 +145,50 @@ func (d *DBClient) Delete(table, id, clinicId string) (string, error) {
 	return id, nil
 }
 
-func (d *DBClient) Update[T any](table, id, clinicId string, obj any) (T, error) {
+func (d *DBClient) Delete(table, id string) (string, error) {
+	var zero string
+	_, count, err := d.Supabase.From(table).Delete("", "exact").Filter("id", "eq", id).Execute()
+	if err != nil {
+		return zero, err
+	}
+	if count == 0 {
+		return zero, fmt.Errorf("%w: id=%s", ErrorRecordNotFound, id)
+	}
+	if count > 1 {
+		return zero, fmt.Errorf("warning, more than one record was deleted in db. Total count %v", count)
+	}
+
+	return id, nil
+}
+
+func (d *DBClient) UpdateByIdAndClinicId[T any](table, id, clinicId string, obj any) (T, error) {
 	var result []T
 	var zero T
 	data, count, err := d.Supabase.From(table).Update(obj, "representation", "exact").Filter("id", "eq", id).Filter("clinic_id", "eq", clinicId).Execute()
+	if err != nil {
+		return zero, err
+	}
+	if count == 0 {
+		return zero, fmt.Errorf("%w: id=%s", ErrorRecordNotFound, id)
+	}
+	if count > 1 {
+		return zero, fmt.Errorf("warning, more than one record was deleted in db. Total count %v", count)
+	}
+	err = json.Unmarshal(data, &result)
+	if err != nil {
+		return zero, err
+	}
+	if len(result) == 0 {
+		return zero, fmt.Errorf("%w: id=%s", ErrorRecordNotFound, id)
+	}
+
+	return result[0], nil
+}
+
+func (d *DBClient) UpdateById[T any](table, id string, obj any) (T, error) {
+	var result []T
+	var zero T
+	data, count, err := d.Supabase.From(table).Update(obj, "representation", "exact").Filter("id", "eq", id).Execute()
 	if err != nil {
 		return zero, err
 	}

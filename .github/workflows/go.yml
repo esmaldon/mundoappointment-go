@@ -29,6 +29,7 @@ jobs:
           cache-dependency-path: |
             backend/cmd/go.sum
             backend/internal/patients/go.sum
+            backend/internal/clinics/go.sum
             backend/pkg/go.sum
 
       - name: Build
@@ -37,13 +38,17 @@ jobs:
 
       - name: Test modules
         working-directory: backend
-        run: go test -v ./cmd/... ./internal/patients/... ./pkg/...
+        run: go test -count=1 -v ./cmd/... ./internal/patients/... ./internal/clinics/... ./pkg/...
+
+      - name: Compile integration tests
+        working-directory: backend
+        run: go test -tags=integration -run '^$' ./internal/patients/... ./internal/clinics/...
 
       - name: Run integration tests
         if: github.event_name != 'pull_request'
-        working-directory: backend/internal/patients
+        working-directory: backend
         env:
           RUN_SUPABASE_INTEGRATION: "true"
           SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
           SUPABASE_TEST_KEY: ${{ secrets.SUPABASE_TEST_KEY }}
-        run: go test -tags=integration -run '^TestStorePatientCRUD$' -v ./...
+        run: go test -tags=integration -count=1 -timeout=2m -v ./internal/patients/... ./internal/clinics/...

@@ -67,21 +67,6 @@ func (h *handler) addPatient(c *gin.Context) {
 	httpmessage.Success(c, http.StatusCreated, patient)
 }
 
-func (h *handler) removePatient(c *gin.Context) {
-	id := c.Param("id")
-	clinicId := c.Param("clinicid")
-	patientId, err := h.s.deletePatient(id, clinicId)
-	if err != nil {
-		if errors.Is(err, ErrorPatientNotFound) {
-			httpmessage.Fail(c, http.StatusNotFound, "NOT_FOUND", err.Error())
-			return
-		}
-		httpmessage.Fail(c, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
-		return
-	}
-	httpmessage.Success(c, http.StatusOK, patientId)
-}
-
 func (h *handler) changePatient(c *gin.Context) {
 	id := c.Param("id")
 	clinicId := c.Param("clinicid")
@@ -103,5 +88,20 @@ func (h *handler) changePatient(c *gin.Context) {
 		httpmessage.Fail(c, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, patientUpdated)
+	httpmessage.Success(c, http.StatusOK, patientUpdated)
+}
+
+func (h *handler) removePatient(c *gin.Context) {
+	id := c.Param("id")
+	clinicId := c.Param("clinicid")
+	patientId, err := h.s.deletePatient(id, clinicId)
+	if err != nil {
+		if errors.Is(err, ErrorPatientNotFound) {
+			httpmessage.Fail(c, http.StatusNotFound, "NOT_FOUND", err.Error())
+			return
+		}
+		httpmessage.Fail(c, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
+	}
+	httpmessage.Success(c, http.StatusOK, patientId)
 }

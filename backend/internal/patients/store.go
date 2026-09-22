@@ -23,11 +23,11 @@ func NewStore(db *config.DBClient) *store {
 }
 
 func (s *store) fetchPatients(clinicId string) ([]Patient, error) {
-	return s.db.FetchAll[Patient](patientTableName, clinicId)
+	return s.db.FetchAllByClinic[Patient](patientTableName, clinicId)
 }
 
 func (s *store) fetchPatient(patientId, clinicId string) (Patient, error) {
-	patient, err := s.db.FetchById[Patient](patientTableName, patientId, clinicId)
+	patient, err := s.db.FetchByIdAndClinicId[Patient](patientTableName, patientId, clinicId)
 	if err != nil {
 		if errors.Is(err, config.ErrorRecordNotFound) {
 			return Patient{}, ErrorPatientNotFound
@@ -57,19 +57,8 @@ func (s *store) createPatient(req CreatePatientRequest, clinicId string) ([]Pati
 	return s.db.Create[Patient](patientTableName, newPatient)
 }
 
-func (s *store) deletePatient(patientId, clinicId string) (string, error) {
-	patient, err := s.db.Delete(patientTableName, patientId, clinicId)
-	if err != nil {
-		if errors.Is(err, config.ErrorRecordNotFound) {
-			return patientId, ErrorPatientNotFound
-		}
-		return patientId, err
-	}
-	return patient, nil
-}
-
 func (s *store) updatePatient(req UpdatePatientRequest, patientId, clinicId string) (Patient, error) {
-	patientUpdated, err := s.db.Update[Patient](patientTableName, patientId, clinicId, req)
+	patientUpdated, err := s.db.UpdateByIdAndClinicId[Patient](patientTableName, patientId, clinicId, req)
 	if err != nil {
 		if errors.Is(err, config.ErrorRecordNotFound) {
 			return Patient{}, ErrorPatientNotFound
@@ -77,4 +66,15 @@ func (s *store) updatePatient(req UpdatePatientRequest, patientId, clinicId stri
 		return Patient{}, err
 	}
 	return patientUpdated, nil
+}
+
+func (s *store) deletePatient(patientId, clinicId string) (string, error) {
+	patient, err := s.db.DeleteByClinicId(patientTableName, patientId, clinicId)
+	if err != nil {
+		if errors.Is(err, config.ErrorRecordNotFound) {
+			return patientId, ErrorPatientNotFound
+		}
+		return patientId, err
+	}
+	return patient, nil
 }
