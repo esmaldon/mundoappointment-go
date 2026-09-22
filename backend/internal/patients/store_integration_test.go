@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"testing"
 	"time"
-	"uuid"
 
 	"mundoappointment.com/pkg/config"
 )
@@ -36,7 +35,7 @@ func TestStorePatientCRUD(t *testing.T) {
 		t.Fatalf("expected id in patient created")
 	}
 	id := strconv.Itoa(*created[0].Id)
-	clinicId := uuid.Parse(created[0].ClinicId)
+	clinicId := created[0].ClinicId.String()
 	deleted := false
 	t.Cleanup(func() {
 		if deleted {
