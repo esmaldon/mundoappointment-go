@@ -24,7 +24,7 @@ func TestStorePatientCRUD(t *testing.T) {
 		Email:     fmt.Sprintf("integration-%d@example.com", time.Now().UnixNano()),
 	}
 
-	created, err := s.createPatient(input)
+	created, err := s.createPatient(input, "ed1618d9-cc28-463b-aa93-b2a9d583459b")
 	if err != nil {
 		t.Fatalf("error creating patient. %v", err)
 	}
@@ -35,7 +35,7 @@ func TestStorePatientCRUD(t *testing.T) {
 		t.Fatalf("expected id in patient created")
 	}
 	id := strconv.Itoa(*created[0].Id)
-	clinicId := created[0].clinicId
+	clinicId := created[0].ClinicId
 	deleted := false
 	t.Cleanup(func() {
 		if deleted {
