@@ -11,7 +11,7 @@ type Patient struct {
 	Email         string    `json:"email"`
 	Status        string    `json:"status"`
 	AdmissionDate string    `json:"admissiondate"`
-	ClinicId      uuid.UUID `json:clinic_id`
+	ClinicId      uuid.UUID `json:"clinic_id"`
 }
 
 type CreatePatientRequest struct {
