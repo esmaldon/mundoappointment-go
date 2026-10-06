@@ -109,24 +109,28 @@ func (d *DBClient) FetchById[T any](table, id string) (T, error) {
 	return result[0], nil
 }
 
-func (d *DBClient) Create[T any](table string, obj any) ([]T, error) {
+func (d *DBClient) Create[T any](table string, obj any) (T, error) {
 	var result []T
+	var zero T
 	data, count, err := d.Supabase.From(table).Insert(obj, false, "", "representation", "exact").Execute()
 	if err != nil {
-		return result, err
+		return zero, err
 	}
 	if count == 0 {
-		return result, fmt.Errorf("warning, %v records saved in db", count)
+		return zero, fmt.Errorf("warning, %v records saved in db", count)
 	}
 	if count > 1 {
-		return result, fmt.Errorf("warning, more than one record was saved in db. Total count %v", count)
+		return zero, fmt.Errorf("warning, more than one record was saved in db. Total count %v", count)
 	}
 	err = json.Unmarshal(data, &result)
 	if err != nil {
-		return result, err
+		return zero, err
 	}
 
-	return result, nil
+	if len(result) != 1 {
+		return zero, fmt.Errorf("expected one created record, got %d", len(result))
+	}
+	return result[0], nil
 }
 
 func (d *DBClient) DeleteByClinicId(table, id, clinicId string) (string, error) {

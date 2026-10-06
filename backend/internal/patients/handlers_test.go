@@ -3,41 +3,51 @@ package patients
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"uuid"
 
 	"github.com/gin-gonic/gin"
 )
 
-type patientStoreStub struct {
-	createPatientFunc func(CreatePatientRequest) ([]Patient, error)
+type patientServiceStub struct {
+	parentFunc        func(UpdateParentRequest, string, string, string) (Parent, error)
+	createPatientFunc func(CreatePatientRequest) (Patient, error)
 	updatePatientFunc func(string, UpdatePatientRequest) (Patient, error)
 }
 
-func (s *patientStoreStub) fetchPatients(clinicId string) ([]Patient, error) {
+func (s *patientServiceStub) getPatients(clinicId string) ([]Patient, error) {
 	panic("unexpected call to fetchPatients")
 }
 
-func (s *patientStoreStub) fetchPatient(id, clinicId string) (Patient, error) {
+func (s *patientServiceStub) getPatient(id, clinicId string) (Patient, error) {
 	panic("unexpected call to fetchPatient")
 }
 
-func (s *patientStoreStub) createPatient(req CreatePatientRequest, clinicId string) ([]Patient, error) {
+func (s *patientServiceStub) addPatient(req CreatePatientRequest, clinicId string) (Patient, error) {
 	if s.createPatientFunc == nil {
 		panic("unexpected call to createPatient")
+	}
+	if clinicId != testClinicID {
+		panic("incorrect clinic ID")
 	}
 	return s.createPatientFunc(req)
 }
 
-func (s *patientStoreStub) deletePatient(id, clinicId string) (string, error) {
+func (s *patientServiceStub) removePatient(id, clinicId string) (string, error) {
 	panic("unexpected call to deletePatient")
 }
 
-func (s *patientStoreStub) updatePatient(req UpdatePatientRequest, id, clinicId string) (Patient, error) {
+func (s *patientServiceStub) changePatient(req UpdatePatientRequest, id, clinicId string) (Patient, error) {
 	if s.updatePatientFunc == nil {
 		panic("unexpected call to updatePatient")
+	}
+	if clinicId != testClinicID {
+		panic("incorrect clinic ID")
 	}
 	return s.updatePatientFunc(id, req)
 }
@@ -106,7 +116,7 @@ func TestAddPatientValidation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := performPatientRequest(
 				t,
-				&patientStoreStub{},
+				&patientServiceStub{},
 				http.MethodPost,
 				"/patients",
 				tt.body,
@@ -118,14 +128,14 @@ func TestAddPatientValidation(t *testing.T) {
 }
 
 func TestAddPatientReturnsCreatedPatient(t *testing.T) {
-	id := 42
-	store := &patientStoreStub{
-		createPatientFunc: func(req CreatePatientRequest) ([]Patient, error) {
+	id := uuid.MustParse(testPatientID)
+	store := &patientServiceStub{
+		createPatientFunc: func(req CreatePatientRequest) (Patient, error) {
 			if req.Email != "patient@example.com" {
 				t.Fatalf("expected request email patient@example.com, got %q", req.Email)
 			}
 
-			return []Patient{{
+			return Patient{
 				Id:        &id,
 				FirstName: req.FirstName,
 				LastName:  req.LastName,
@@ -133,7 +143,7 @@ func TestAddPatientReturnsCreatedPatient(t *testing.T) {
 				Phone:     req.Phone,
 				Email:     req.Email,
 				Status:    "Active",
-			}}, nil
+			}, nil
 		},
 	}
 
@@ -149,12 +159,12 @@ func TestAddPatientReturnsCreatedPatient(t *testing.T) {
 		t.Fatalf("expected status %d, got %d; body=%s", http.StatusCreated, recorder.Code, recorder.Body.String())
 	}
 
-	var response []Patient
+	var response Patient
 	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
 		t.Fatalf("decoding response: %v", err)
 	}
-	if len(response) != 1 || response[0].Id == nil || *response[0].Id != id {
-		t.Fatalf("expected created patient with id %d, got %+v", id, response)
+	if response.Id == nil || *response.Id != id {
+		t.Fatalf("expected created patient with id %s, got %+v", id, response)
 	}
 }
 
@@ -181,9 +191,9 @@ func TestChangePatientValidation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := performPatientRequest(
 				t,
-				&patientStoreStub{},
+				&patientServiceStub{},
 				http.MethodPatch,
-				"/patients/42",
+				"/patients/"+testPatientID,
 				tt.body,
 			)
 
@@ -194,10 +204,10 @@ func TestChangePatientValidation(t *testing.T) {
 
 func TestChangePatientAcceptsPartialRequest(t *testing.T) {
 	newPhone := "9999999999"
-	store := &patientStoreStub{
+	store := &patientServiceStub{
 		updatePatientFunc: func(id string, req UpdatePatientRequest) (Patient, error) {
-			if id != "42" {
-				t.Fatalf("expected patient id 42, got %q", id)
+			if id != testPatientID {
+				t.Fatalf("expected patient id %s, got %q", testPatientID, id)
 			}
 			if req.Phone == nil || *req.Phone != newPhone {
 				t.Fatalf("expected phone %q, got %+v", newPhone, req.Phone)
@@ -206,7 +216,7 @@ func TestChangePatientAcceptsPartialRequest(t *testing.T) {
 				t.Fatalf("expected only phone in partial update, got %+v", req)
 			}
 
-			return Patient{Id: intPointer(42), Phone: newPhone}, nil
+			return Patient{Id: uuidPointer(testPatientID), Phone: newPhone}, nil
 		},
 	}
 
@@ -214,7 +224,7 @@ func TestChangePatientAcceptsPartialRequest(t *testing.T) {
 		t,
 		store,
 		http.MethodPatch,
-		"/patients/42",
+		"/patients/"+testPatientID,
 		`{"phone":"9999999999"}`,
 	)
 
@@ -226,14 +236,14 @@ func TestChangePatientAcceptsPartialRequest(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
 		t.Fatalf("decoding response: %v", err)
 	}
-	if response.Id == nil || *response.Id != 42 || response.Phone != newPhone {
+	if response.Id == nil || response.Id.String() != testPatientID || response.Phone != newPhone {
 		t.Fatalf("unexpected update response: %+v", response)
 	}
 }
 
 func performPatientRequest(
 	t *testing.T,
-	store patientStore,
+	store patientService,
 	method string,
 	path string,
 	body string,
@@ -241,12 +251,10 @@ func performPatientRequest(
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 
-	h := NewHandler(store)
 	router := gin.New()
-	router.POST("/patients", h.addPatient)
-	router.PATCH("/patients/:id", h.changePatient)
+	registerPatientsRoutes(router.Group("/api/v1"), store)
 
-	request := httptest.NewRequest(method, path, bytes.NewBufferString(body))
+	request := httptest.NewRequest(method, "/api/v1/clinic/"+testClinicID+path, bytes.NewBufferString(body))
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, request)
@@ -273,6 +281,75 @@ func assertErrorResponse(t *testing.T, recorder *httptest.ResponseRecorder, stat
 	}
 }
 
-func intPointer(value int) *int {
-	return &value
+func uuidPointer(value string) *uuid.UUID {
+	id := uuid.MustParse(value)
+	return &id
+}
+
+const testPatientID = "ed1618d9-cc28-463b-aa93-b2a9d583459a"
+const testClinicID = "ed1618d9-cc28-463b-aa93-b2a9d583459b"
+
+func (s *patientServiceStub) addParent(CreatePatientRequest) (Parent, error) {
+	panic("unexpected addParent")
+}
+func (s *patientServiceStub) changeParent(req UpdateParentRequest, parent, patient, clinic string) (Parent, error) {
+	return s.parentFunc(req, parent, patient, clinic)
+}
+func (s *patientServiceStub) removeParent(string) (string, error) { panic("unexpected removeParent") }
+
+func TestAddPatientServiceErrors(t *testing.T) {
+	for _, tc := range []struct {
+		err    error
+		status int
+		code   string
+	}{
+		{ErrorPatientBadReq, 400, "BAD_REQUEST"}, {ErrorParentEmpty, 400, "BAD_REQUEST"}, {errors.New("database unavailable"), 500, "INTERNAL_ERROR"},
+	} {
+		t.Run(tc.code+tc.err.Error(), func(t *testing.T) {
+			stub := &patientServiceStub{createPatientFunc: func(CreatePatientRequest) (Patient, error) { return Patient{}, fmt.Errorf("create: %w", tc.err) }}
+			w := performPatientRequest(t, stub, "POST", "/patients", `{"firstname":"Test","lastname":"Test","birthday":"1990-01-01","phone":"5555555555","email":"test@example.com"}`)
+			assertErrorResponse(t, w, tc.status, tc.code)
+		})
+	}
+}
+func TestParentHandler(t *testing.T) {
+	parentID := uuid.New()
+	path := "/patients/" + testPatientID + "/parent/" + parentID.String()
+	for _, tc := range []struct{ body, code string }{
+		{`{}`, "EMPTY_REQUEST"}, {`{"parent_firstname":null}`, "EMPTY_REQUEST"}, {`{"parent_firstname":""}`, "BAD_REQUEST"}, {`{"parent_status":"Deleted"}`, "BAD_REQUEST"}, {`{"parent_birthday":"invalid"}`, "BAD_REQUEST"}, {`{"parent_lastname":`, "BAD_REQUEST"},
+	} {
+		w := performPatientRequest(t, &patientServiceStub{}, "PATCH", path, tc.body)
+		assertErrorResponse(t, w, 400, tc.code)
+	}
+	for _, tc := range []struct {
+		err    error
+		status int
+		code   string
+	}{
+		{nil, 200, ""}, {ErrorParentNotFound, 404, "NOT_FOUND"}, {ErrorPatientNotFound, 404, "NOT_FOUND"}, {errors.New("database unavailable"), 500, "INTERNAL_ERROR"},
+	} {
+		called := false
+		stub := &patientServiceStub{parentFunc: func(req UpdateParentRequest, parent, patient, clinic string) (Parent, error) {
+			called = true
+			if parent != parentID.String() || patient != testPatientID || clinic != testClinicID || req.ParentFirstName == nil || *req.ParentFirstName != "Updated" {
+				t.Fatal("incorrect parent update or scope")
+			}
+			if tc.err != nil {
+				return Parent{}, fmt.Errorf("update: %w", tc.err)
+			}
+			return Parent{Id: &parentID, FirstName: *req.ParentFirstName}, nil
+		}}
+		w := performPatientRequest(t, stub, "PATCH", path, `{"parent_firstname":"Updated"}`)
+		if !called {
+			t.Fatal("handler was not invoked")
+		}
+		if tc.err != nil {
+			assertErrorResponse(t, w, tc.status, tc.code)
+		} else {
+			var got Parent
+			if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &got) != nil || got.Id == nil || *got.Id != parentID || got.FirstName != "Updated" {
+				t.Fatalf("unexpected response %s", w.Body.String())
+			}
+		}
+	}
 }

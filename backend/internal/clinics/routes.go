@@ -5,12 +5,14 @@ import (
 	"mundoappointment.com/pkg/config"
 )
 
-func InitClinicRoutes(e *gin.RouterGroup, db *config.DBClient) {
-	registerClinicRoutes(e, NewStore(db))
+func InitClinicsRoutes(e *gin.RouterGroup, db *config.DBClient) {
+	store := NewStore(db)
+	service := NewService(store)
+	registerClinicsRoutes(e, service)
 }
 
-func registerClinicRoutes(e *gin.RouterGroup, s clinicStore) {
-	h := NewHandler(s)
+func registerClinicsRoutes(e *gin.RouterGroup, service clinicService) {
+	h := NewHandler(service)
 
 	e.GET("/clinics", h.getClinics)
 	e.GET("/clinic/:clinicid", h.getClinic)

@@ -9,18 +9,18 @@ type Clinic struct {
 	Timezone string     `json:"timezone"`
 }
 
-type CreateClinic struct {
+type CreateClinicRequest struct {
 	Name     string `json:"name" binding:"required,min=1,max=50"`
 	Timezone string `json:"timezone" binding:"required,min=1,max=50"`
 }
 
-type UpdateClinic struct {
+type UpdateClinicRequest struct {
 	Name     *string `json:"name,omitempty" binding:"omitempty,min=1,max=50"`
 	Status   *string `json:"status,omitempty" binding:"omitempty,oneof=Active Inactive"`
 	Timezone *string `json:"timezone,omitempty" binding:"omitempty,min=1,max=50"`
 }
 
-func (u *UpdateClinic) IsEmpty() bool {
+func (u *UpdateClinicRequest) IsEmpty() bool {
 	return u.Name == nil &&
 		u.Status == nil &&
 		u.Timezone == nil

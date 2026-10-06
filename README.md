@@ -7,6 +7,9 @@ Fullstack application that helps manage medical appointments and therapy session
 
 ## Architecture
 
+Diseño del siguiente módulo: [usuarios, membresías y profesionales](docs/usuarios-membresias-profesionales.md).
+Diseño mínimo de agenda: [citas, disponibilidad y capacidad](docs/cita-disponibilidad.md).
+
 ### Backend
 The backend structure is organized by domain, and each domain is divided into layers consisting of:
 
@@ -20,15 +23,23 @@ The backend structure is organized by domain, and each domain is divided into la
 Patient admission date
 
 
-## TODO
-- [ ] Init Frontend side
-- [ ] Add more integration test to patients domain
-- [x] Verify from gin docs if any change is needed to imporve the code
-- [x] Add CI/CD
-- [ ] Set url prefix in routs api/v1
-- [ ] Update patient model to add clinic_id
-- [ ] Add clinic model
-- [ ] update patient routes to add clinic specification
-- [ ] update handlers to use clinicId on all patient CRUD op
-- [ ] update store to use clinicId to filter all patients of that are in the same clinic
-- [ ] 
+## Gestión del proyecto
+
+El [plan único en Notion](https://app.notion.com/p/46deaaf04e474ebab434087ae36be978)
+contiene la secuencia, las dependencias, los estados y los objetivos para planificar
+la semana. Usa **Secuencia** para consultar el orden, **Por estado** para revisar
+avances y **Para planificar** para seleccionar el siguiente trabajo.
+
+La [página del proyecto](https://app.notion.com/p/3e45a22648758095ab3cf338b32a1aeb)
+explica cómo mantener el tablero y preparar objetivos de calendario. No existe
+sincronización automática: antes de planificar, revisar avances y dependencias;
+acordar disponibilidad y fechas antes de crear eventos.
+
+Los Markdown conservan las reglas y el esquema técnico, no una segunda lista de
+tareas. El antiguo TODO queda consolidado en el tablero: CRUD y alcance por
+clínica en BASE-01/BASE-02, CI en BASE-03, seguridad en SEG-03, pruebas adicionales
+en QA-01 y frontend en FUT-01. La revisión de Gin figuraba como terminada en el
+TODO histórico; no representa una validación nueva. CI no implica despliegue.
+
+Referencia para consultar el tablero mediante la integración de Notion:
+data source `233fa4b0-b60e-4e68-a467-a837bb33644a`.

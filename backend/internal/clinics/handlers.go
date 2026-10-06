@@ -8,26 +8,26 @@ import (
 	"mundoappointment.com/pkg/httpmessage"
 )
 
-type clinicStore interface {
-	fetchClinics() ([]Clinic, error)
-	fetchClinic(string) (Clinic, error)
-	createClinic(CreateClinic) ([]Clinic, error)
-	deleteClinic(string) (string, error)
-	updateClinic(UpdateClinic, string) (Clinic, error)
+type clinicService interface {
+	getClinics() ([]Clinic, error)
+	getClinic(string) (Clinic, error)
+	addClinic(CreateClinicRequest) (Clinic, error)
+	changeClinic(UpdateClinicRequest, string) (Clinic, error)
+	removeClinic(string) (string, error)
 }
 
 type handler struct {
-	s clinicStore
+	s clinicService
 }
 
-func NewHandler(s clinicStore) *handler {
+func NewHandler(s clinicService) *handler {
 	return &handler{
 		s: s,
 	}
 }
 
 func (h *handler) getClinics(c *gin.Context) {
-	clinics, err := h.s.fetchClinics()
+	clinics, err := h.s.getClinics()
 	if err != nil {
 		httpmessage.Fail(c, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
@@ -37,7 +37,7 @@ func (h *handler) getClinics(c *gin.Context) {
 
 func (h *handler) getClinic(c *gin.Context) {
 	id := c.Param("clinicid")
-	clinic, err := h.s.fetchClinic(id)
+	clinic, err := h.s.getClinic(id)
 	if err != nil {
 		if errors.Is(err, ErrorClinicNotFound) {
 			httpmessage.Fail(c, http.StatusNotFound, "NOT_FOUND", err.Error())
@@ -50,12 +50,12 @@ func (h *handler) getClinic(c *gin.Context) {
 }
 
 func (h *handler) addClinic(c *gin.Context) {
-	var req CreateClinic
+	var req CreateClinicRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		httpmessage.Fail(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
 	}
-	clinic, err := h.s.createClinic(req)
+	clinic, err := h.s.addClinic(req)
 	if err != nil {
 		httpmessage.Fail(c, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
@@ -65,7 +65,7 @@ func (h *handler) addClinic(c *gin.Context) {
 
 func (h *handler) changeClinic(c *gin.Context) {
 	id := c.Param("clinicid")
-	var req UpdateClinic
+	var req UpdateClinicRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		httpmessage.Fail(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
@@ -74,7 +74,7 @@ func (h *handler) changeClinic(c *gin.Context) {
 		httpmessage.Fail(c, http.StatusBadRequest, "EMPTY_REQUEST", "at least one field should be provided for update")
 		return
 	}
-	clinicUpdated, err := h.s.updateClinic(req, id)
+	clinicUpdated, err := h.s.changeClinic(req, id)
 	if err != nil {
 		if errors.Is(err, ErrorClinicNotFound) {
 			httpmessage.Fail(c, http.StatusNotFound, "NOT_FOUND", err.Error())
@@ -88,7 +88,7 @@ func (h *handler) changeClinic(c *gin.Context) {
 
 func (h *handler) removeClinic(c *gin.Context) {
 	id := c.Param("clinicid")
-	clinicId, err := h.s.deleteClinic(id)
+	clinicId, err := h.s.removeClinic(id)
 	if err != nil {
 		if errors.Is(err, ErrorClinicNotFound) {
 			httpmessage.Fail(c, http.StatusNotFound, "NOT_FOUND", err.Error())

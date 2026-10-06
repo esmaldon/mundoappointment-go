@@ -12,10 +12,11 @@ func TestClinicAndPatientRoutesRegisterTogether(t *testing.T) {
 	router := gin.New()
 	v1 := router.Group("/api/v1")
 	// Registration must not access the database or panic over conflicting parameters.
-	patients.InitPatiantsRoutes(v1, nil)
-	clinics.InitClinicRoutes(v1, nil)
+	patients.InitPatientsRoutes(v1, nil)
+	clinics.InitClinicsRoutes(v1, nil)
 
 	want := map[string]bool{
+		"PATCH /api/v1/clinic/:clinicid/patients/:id/parent/:parentid": false,
 		"GET /api/v1/clinics":                          false,
 		"POST /api/v1/clinics/":                        false,
 		"GET /api/v1/clinic/:clinicid":                 false,

@@ -2,15 +2,17 @@ package patients
 
 import (
 	"errors"
-	"time"
 	"uuid"
 
 	"mundoappointment.com/pkg/config"
 )
 
 const patientTableName = "patients"
+const parentTableName = "parents"
 
 var ErrorPatientNotFound = errors.New("patient not found")
+var ErrorParentNotFound = errors.New("parent not found")
+var ErrorParentEmpty = errors.New("parent is empty")
 
 type store struct {
 	db *config.DBClient
@@ -38,23 +40,25 @@ func (s *store) fetchPatient(patientId, clinicId string) (Patient, error) {
 	return patient, nil
 }
 
-func (s *store) createPatient(req CreatePatientRequest, clinicId string) ([]Patient, error) {
-	cId, err := uuid.Parse(clinicId)
-	if err != nil {
-		return nil, err
-	}
+func (s *store) createPatient(p Patient, clinicId uuid.UUID) (Patient, error) {
+	return s.db.Create[Patient](patientTableName, p)
+}
 
-	newPatient := Patient{
-		FirstName:     req.FirstName,
-		LastName:      req.LastName,
-		Birthday:      req.Birthday,
-		Phone:         req.Phone,
-		Email:         req.Email,
-		Status:        "Active",
-		AdmissionDate: time.Now().Format("2006-01-02"),
-		ClinicId:      cId,
-	}
-	return s.db.Create[Patient](patientTableName, newPatient)
+// Keep the public API independent of the parents table's column names.
+type parentRecord struct {
+	Id        *uuid.UUID `json:"id,omitempty"`
+	FirstName string     `json:"first_name"`
+	LastName  string     `json:"last_name"`
+	Birthday  string     `json:"birthday"`
+	Status    string     `json:"status"`
+}
+
+func (p parentRecord) parent() Parent {
+	return Parent{Id: p.Id, FirstName: p.FirstName, LastName: p.LastName, Birthday: p.Birthday, Status: p.Status}
+}
+func (s *store) createParent(p Parent) (Parent, error) {
+	row, err := s.db.Create[parentRecord](parentTableName, parentRecord{Id: p.Id, FirstName: p.FirstName, LastName: p.LastName, Birthday: p.Birthday, Status: p.Status})
+	return row.parent(), err
 }
 
 func (s *store) updatePatient(req UpdatePatientRequest, patientId, clinicId string) (Patient, error) {
@@ -68,6 +72,24 @@ func (s *store) updatePatient(req UpdatePatientRequest, patientId, clinicId stri
 	return patientUpdated, nil
 }
 
+func (s *store) updateParent(req UpdateParentRequest, parentId string) (Parent, error) {
+	// Translate API fields to the parents table column names.
+	patch := struct {
+		FirstName *string `json:"first_name,omitempty"`
+		LastName  *string `json:"last_name,omitempty"`
+		Birthday  *string `json:"birthday,omitempty"`
+		Status    *string `json:"status,omitempty"`
+	}{req.ParentFirstName, req.ParentLastName, req.ParentBirthday, req.ParentStatus}
+	parentUpdated, err := s.db.UpdateById[parentRecord](parentTableName, parentId, patch)
+	if err != nil {
+		if errors.Is(err, config.ErrorRecordNotFound) {
+			return Parent{}, ErrorParentNotFound
+		}
+		return Parent{}, err
+	}
+	return parentUpdated.parent(), nil
+}
+
 func (s *store) deletePatient(patientId, clinicId string) (string, error) {
 	patient, err := s.db.DeleteByClinicId(patientTableName, patientId, clinicId)
 	if err != nil {
@@ -77,4 +99,15 @@ func (s *store) deletePatient(patientId, clinicId string) (string, error) {
 		return patientId, err
 	}
 	return patient, nil
+}
+
+func (s *store) deleteParent(parentId string) (string, error) {
+	parent, err := s.db.Delete(parentTableName, parentId)
+	if err != nil {
+		if errors.Is(err, config.ErrorRecordNotFound) {
+			return parentId, ErrorParentNotFound
+		}
+		return parentId, err
+	}
+	return parent, nil
 }

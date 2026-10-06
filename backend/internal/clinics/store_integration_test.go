@@ -35,27 +35,19 @@ func TestStoreClinicCRUD(t *testing.T) {
 	s := newClinicIntegrationStore(t)
 	createFixture := func(name string) Clinic {
 		t.Helper()
-		created, err := s.createClinic(CreateClinic{Name: name, Timezone: "UTC"})
+		created, err := s.createClinic(CreateClinicRequest{Name: name, Timezone: "UTC"})
 		if err != nil {
 			t.Fatalf("creating clinic: %v", err)
 		}
-		// Register cleanup before assertions so subsequent failures don't leave fixtures.
-		for _, clinic := range created {
-			if clinic.Id == nil || *clinic.Id == (uuid.UUID{}) {
-				continue
-			}
+		clinic := created
+		if clinic.Id != nil && *clinic.Id != uuid.Nil() {
 			id := clinic.Id.String()
 			t.Cleanup(func() {
-				_, err := s.deleteClinic(id)
-				if err != nil && !errors.Is(err, ErrorClinicNotFound) {
-					t.Errorf("cleaning up test clinic %s: %v", id, err)
+				if _, err := s.deleteClinic(id); err != nil && !errors.Is(err, ErrorClinicNotFound) {
+					t.Errorf("cleaning up clinic: %v", err)
 				}
 			})
 		}
-		if len(created) != 1 {
-			t.Fatalf("expected one clinic, got %d", len(created))
-		}
-		clinic := created[0]
 		if clinic.Id == nil || *clinic.Id == (uuid.UUID{}) {
 			t.Fatal("expected a nonzero database-generated clinic UUID")
 		}
@@ -87,7 +79,7 @@ func TestStoreClinicCRUD(t *testing.T) {
 	// Each PATCH changes one field and must preserve the others, including the ID.
 	name, timezone, status := fmt.Sprintf("Updated clinic %d", stamp), "America/Mexico_City", "Inactive"
 	want := created
-	for _, patch := range []UpdateClinic{{Name: &name}, {Timezone: &timezone}, {Status: &status}} {
+	for _, patch := range []UpdateClinicRequest{{Name: &name}, {Timezone: &timezone}, {Status: &status}} {
 		if patch.Name != nil {
 			want.Name = *patch.Name
 		}
@@ -139,7 +131,7 @@ func TestStoreClinicCRUD(t *testing.T) {
 	if !errors.Is(err, ErrorClinicNotFound) {
 		t.Fatalf("fetch after delete: expected ErrorClinicNotFound, got %v", err)
 	}
-	_, err = s.updateClinic(UpdateClinic{Status: &status}, id)
+	_, err = s.updateClinic(UpdateClinicRequest{Status: &status}, id)
 	if !errors.Is(err, ErrorClinicNotFound) {
 		t.Fatalf("update after delete: expected ErrorClinicNotFound, got %v", err)
 	}

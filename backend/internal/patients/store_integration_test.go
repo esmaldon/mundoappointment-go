@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
 	"testing"
 	"time"
+	"uuid"
 
 	"mundoappointment.com/pkg/config"
 )
@@ -16,7 +16,10 @@ import (
 func TestStorePatientCRUD(t *testing.T) {
 	s := newIntegrationStore(t)
 
-	input := CreatePatientRequest{
+	clinicUUID := createIntegrationClinic(t, s)
+	otherClinicUUID := createIntegrationClinic(t, s)
+	input := Patient{
+		ClinicId: clinicUUID, Status: "Active", AdmissionDate: time.Now().Format("2006-01-02"),
 		FirstName: "Integration",
 		LastName:  "Test",
 		Birthday:  "1990-01-01",
@@ -24,18 +27,15 @@ func TestStorePatientCRUD(t *testing.T) {
 		Email:     fmt.Sprintf("integration-%d@example.com", time.Now().UnixNano()),
 	}
 
-	created, err := s.createPatient(input, "ed1618d9-cc28-463b-aa93-b2a9d583459b")
+	created, err := s.createPatient(input, clinicUUID)
 	if err != nil {
 		t.Fatalf("error creating patient. %v", err)
 	}
-	if len(created) != 1 {
-		t.Fatalf("expected 1 record created got %d", len(created))
-	}
-	if created[0].Id == nil {
+	if created.Id == nil {
 		t.Fatalf("expected id in patient created")
 	}
-	id := strconv.Itoa(*created[0].Id)
-	clinicId := created[0].ClinicId.String()
+	id := created.Id.String()
+	clinicId := created.ClinicId.String()
 	deleted := false
 	t.Cleanup(func() {
 		if deleted {
@@ -57,6 +57,18 @@ func TestStorePatientCRUD(t *testing.T) {
 		t.Errorf("expected email %q, got %q", input.Email, fetched.Email)
 	}
 
+	// A patient cannot be read, changed or deleted through another clinic.
+	if _, err := s.fetchPatient(id, otherClinicUUID.String()); !errors.Is(err, ErrorPatientNotFound) {
+		t.Fatalf("cross-clinic fetch: %v", err)
+	}
+	wrongPhone := "1111111111"
+	if _, err := s.updatePatient(UpdatePatientRequest{Phone: &wrongPhone}, id, otherClinicUUID.String()); !errors.Is(err, ErrorPatientNotFound) {
+		t.Fatalf("cross-clinic update: %v", err)
+	}
+	if _, err := s.deletePatient(id, otherClinicUUID.String()); !errors.Is(err, ErrorPatientNotFound) {
+		t.Fatalf("cross-clinic delete: %v", err)
+	}
+
 	newPhone := "9999999999"
 	updateReq := UpdatePatientRequest{
 		Phone: &newPhone,
@@ -76,7 +88,7 @@ func TestStorePatientCRUD(t *testing.T) {
 	}
 	found := false
 	for _, patient := range allPatients {
-		if patient.Id != nil && *patient.Id == *created[0].Id {
+		if patient.Id != nil && *patient.Id == *created.Id {
 			found = true
 			break
 		}
@@ -123,4 +135,101 @@ func newIntegrationStore(t *testing.T) *store {
 	}
 
 	return NewStore(db)
+}
+
+func createIntegrationClinic(t *testing.T, s *store) uuid.UUID {
+	t.Helper()
+	type clinicFixture struct {
+		ID       *uuid.UUID `json:"id,omitempty"`
+		Name     string     `json:"name"`
+		Status   string     `json:"status"`
+		Timezone string     `json:"timezone"`
+	}
+	clinic, err := s.db.Create[clinicFixture]("clinics", clinicFixture{Name: fmt.Sprintf("Patient test %d", time.Now().UnixNano()), Status: "Active", Timezone: "UTC"})
+	if err != nil {
+		t.Fatalf("creating test clinic: %v", err)
+	}
+	if clinic.ID == nil || *clinic.ID == uuid.Nil() {
+		t.Fatal("missing clinic UUID")
+	}
+	t.Cleanup(func() {
+		if _, err := s.db.Delete("clinics", clinic.ID.String()); err != nil && !errors.Is(err, config.ErrorRecordNotFound) {
+			t.Errorf("cleaning up test clinic: %v", err)
+		}
+	})
+	return *clinic.ID
+}
+
+func TestStoreMinorPatientAndParentCRUD(t *testing.T) {
+	s := newIntegrationStore(t)
+	clinicID := createIntegrationClinic(t, s)
+	req := minorRequest()
+	req.Email = fmt.Sprintf("minor-%d@example.com", time.Now().UnixNano())
+	service := NewService(s)
+	p, err := service.addPatient(req, clinicID.String())
+	if err != nil {
+		t.Fatalf("creating minor and parent: %v", err)
+	}
+	if p.ParentId != nil {
+		parentID := p.ParentId.String()
+		t.Cleanup(func() {
+			if _, err := s.deleteParent(parentID); err != nil && !errors.Is(err, ErrorParentNotFound) {
+				t.Errorf("cleaning up parent: %v", err)
+			}
+		})
+	}
+	if p.Id != nil {
+		patientID := p.Id.String()
+		t.Cleanup(func() {
+			if _, err := s.deletePatient(patientID, clinicID.String()); err != nil && !errors.Is(err, ErrorPatientNotFound) {
+				t.Errorf("cleaning up patient: %v", err)
+			}
+		})
+	}
+	if p.Id == nil || p.ParentId == nil {
+		t.Fatal("missing patient or parent UUID")
+	}
+	parent, err := s.db.FetchById[parentRecord](parentTableName, p.ParentId.String())
+	if err != nil || parent.Birthday != *req.ParentBirthday {
+		t.Fatalf("parent birthday=%q error=%v", parent.Birthday, err)
+	}
+	name := "Updated parent"
+	updated, err := service.changeParent(UpdateParentRequest{ParentFirstName: &name}, p.ParentId.String(), p.Id.String(), clinicID.String())
+	if err != nil || updated.FirstName != name {
+		t.Fatalf("parent update=%+v error=%v", updated, err)
+	}
+	fetched, err := s.db.FetchById[parentRecord](parentTableName, p.ParentId.String())
+	if err != nil || fetched.FirstName != name || fetched.Birthday != *req.ParentBirthday {
+		t.Fatalf("persisted parent=%+v error=%v", fetched, err)
+	}
+}
+
+func TestStoreParentCRUD(t *testing.T) {
+	s := newIntegrationStore(t)
+	p, err := s.createParent(Parent{FirstName: "Integration", LastName: "Parent", Birthday: "1980-02-03", Status: "Active"})
+	if err != nil {
+		t.Fatalf("creating parent: %v", err)
+	}
+	if p.Id == nil {
+		t.Fatal("missing parent ID")
+	}
+	id := p.Id.String()
+	t.Cleanup(func() {
+		if _, err := s.deleteParent(id); err != nil && !errors.Is(err, ErrorParentNotFound) {
+			t.Errorf("cleaning up parent: %v", err)
+		}
+	})
+	if p.FirstName != "Integration" || p.LastName != "Parent" || p.Birthday != "1980-02-03" {
+		t.Fatalf("unexpected parent %+v", p)
+	}
+	updated, err := s.updateParent(UpdateParentRequest{ParentLastName: stringPointer("Updated")}, id)
+	if err != nil || updated.LastName != "Updated" || updated.FirstName != p.FirstName {
+		t.Fatalf("updated parent %+v error=%v", updated, err)
+	}
+	if _, err := s.deleteParent(id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.updateParent(UpdateParentRequest{ParentFirstName: stringPointer("Missing")}, id); !errors.Is(err, ErrorParentNotFound) {
+		t.Fatalf("missing parent: %v", err)
+	}
 }

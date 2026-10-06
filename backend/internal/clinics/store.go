@@ -36,7 +36,7 @@ func (s *store) fetchClinic(clinicId string) (Clinic, error) {
 	return clinic, nil
 }
 
-func (s *store) createClinic(req CreateClinic) ([]Clinic, error) {
+func (s *store) createClinic(req CreateClinicRequest) (Clinic, error) {
 	newClinic := Clinic{
 		Name:     req.Name,
 		Status:   "Active",
@@ -46,7 +46,7 @@ func (s *store) createClinic(req CreateClinic) ([]Clinic, error) {
 	return s.db.Create[Clinic](clinicTableName, newClinic)
 }
 
-func (s *store) updateClinic(req UpdateClinic, clinicId string) (Clinic, error) {
+func (s *store) updateClinic(req UpdateClinicRequest, clinicId string) (Clinic, error) {
 	clinicUpdated, err := s.db.UpdateById[Clinic](clinicTableName, clinicId, req)
 	if err != nil {
 		if errors.Is(err, config.ErrorRecordNotFound) {

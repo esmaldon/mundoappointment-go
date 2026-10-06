@@ -20,22 +20,24 @@ const testClinicID = "ed1618d9-cc28-463b-aa93-b2a9d583459b"
 type clinicStoreStub struct {
 	list   func() ([]Clinic, error)
 	get    func(string) (Clinic, error)
-	create func(CreateClinic) ([]Clinic, error)
-	update func(UpdateClinic, string) (Clinic, error)
+	create func(CreateClinicRequest) (Clinic, error)
+	update func(UpdateClinicRequest, string) (Clinic, error)
 	delete func(string) (string, error)
 }
 
-func (s clinicStoreStub) fetchClinics() ([]Clinic, error)                 { return s.list() }
-func (s clinicStoreStub) fetchClinic(id string) (Clinic, error)           { return s.get(id) }
-func (s clinicStoreStub) createClinic(req CreateClinic) ([]Clinic, error) { return s.create(req) }
-func (s clinicStoreStub) updateClinic(req UpdateClinic, id string) (Clinic, error) {
+func (s clinicStoreStub) fetchClinics() ([]Clinic, error)       { return s.list() }
+func (s clinicStoreStub) fetchClinic(id string) (Clinic, error) { return s.get(id) }
+func (s clinicStoreStub) createClinic(req CreateClinicRequest) (Clinic, error) {
+	return s.create(req)
+}
+func (s clinicStoreStub) updateClinic(req UpdateClinicRequest, id string) (Clinic, error) {
 	return s.update(req, id)
 }
 func (s clinicStoreStub) deleteClinic(id string) (string, error) { return s.delete(id) }
 
 func clinicRequest(s clinicStore, method, path, body string) *httptest.ResponseRecorder {
 	router := gin.New()
-	registerClinicRoutes(router.Group("/api/v1"), s)
+	registerClinicsRoutes(router.Group("/api/v1"), NewService(s))
 	req := httptest.NewRequest(method, "/api/v1"+path, strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -116,7 +118,7 @@ func TestClinicSuccessResponses(t *testing.T) {
 	}
 	clinic := Clinic{Id: &id, Name: "Test clinic", Status: "Active", Timezone: "UTC"}
 	var receivedID string
-	var receivedCreate CreateClinic
+	var receivedCreate CreateClinicRequest
 	checkID := func(got string) { receivedID = got }
 	cases := []struct {
 		name, method, path, body string
@@ -127,21 +129,21 @@ func TestClinicSuccessResponses(t *testing.T) {
 		{"list", "GET", "/clinics", "", 200, []Clinic{clinic}, clinicStoreStub{list: func() ([]Clinic, error) { return []Clinic{clinic}, nil }}},
 		{"empty list", "GET", "/clinics", "", 200, []Clinic{}, clinicStoreStub{list: func() ([]Clinic, error) { return []Clinic{}, nil }}},
 		{"get", "GET", "/clinic/" + testClinicID, "", 200, clinic, clinicStoreStub{get: func(id string) (Clinic, error) { checkID(id); return clinic, nil }}},
-		{"create", "POST", "/clinics/", `{"name":"Test clinic","timezone":"UTC"}`, 201, []Clinic{clinic}, clinicStoreStub{create: func(req CreateClinic) ([]Clinic, error) {
+		{"create", "POST", "/clinics/", `{"name":"Test clinic","timezone":"UTC"}`, 201, clinic, clinicStoreStub{create: func(req CreateClinicRequest) (Clinic, error) {
 			receivedCreate = req
-			return []Clinic{clinic}, nil
+			return clinic, nil
 		}}},
 		{"delete", "DELETE", "/clinic/" + testClinicID, "", 200, testClinicID, clinicStoreStub{delete: func(id string) (string, error) { checkID(id); return id, nil }}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			receivedID = ""
-			receivedCreate = CreateClinic{}
+			receivedCreate = CreateClinicRequest{}
 			assertClinicJSON(t, clinicRequest(tc.store, tc.method, tc.path, tc.body), tc.status, tc.want)
 			if (tc.name == "get" || tc.name == "delete") && receivedID != testClinicID {
 				t.Fatalf("clinic ID: got %q", receivedID)
 			}
-			if tc.name == "create" && receivedCreate != (CreateClinic{Name: "Test clinic", Timezone: "UTC"}) {
+			if tc.name == "create" && receivedCreate != (CreateClinicRequest{Name: "Test clinic", Timezone: "UTC"}) {
 				t.Fatalf("unexpected create request: %+v", receivedCreate)
 			}
 		})
@@ -153,7 +155,7 @@ func TestClinicPartialUpdates(t *testing.T) {
 		t.Run(body, func(t *testing.T) {
 			calls := 0
 			result := Clinic{Name: "Updated", Timezone: "UTC", Status: "Active"}
-			s := clinicStoreStub{update: func(req UpdateClinic, id string) (Clinic, error) {
+			s := clinicStoreStub{update: func(req UpdateClinicRequest, id string) (Clinic, error) {
 				calls++
 				if id != testClinicID {
 					t.Fatalf("clinic ID: got %q", id)
@@ -192,8 +194,8 @@ func TestClinicStoreErrors(t *testing.T) {
 				s := clinicStoreStub{
 					list:   func() ([]Clinic, error) { calls++; return nil, storeErr },
 					get:    func(string) (Clinic, error) { calls++; return Clinic{}, storeErr },
-					create: func(CreateClinic) ([]Clinic, error) { calls++; return nil, storeErr },
-					update: func(UpdateClinic, string) (Clinic, error) { calls++; return Clinic{}, storeErr },
+					create: func(CreateClinicRequest) (Clinic, error) { calls++; return Clinic{}, storeErr },
+					update: func(UpdateClinicRequest, string) (Clinic, error) { calls++; return Clinic{}, storeErr },
 					delete: func(string) (string, error) { calls++; return "", storeErr },
 				}
 				method, path, body := "GET", "/clinic/"+testClinicID, ""
