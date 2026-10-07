@@ -44,21 +44,9 @@ func (s *store) createPatient(p Patient, clinicId uuid.UUID) (Patient, error) {
 	return s.db.Create[Patient](patientTableName, p)
 }
 
-// Keep the public API independent of the parents table's column names.
-type parentRecord struct {
-	Id        *uuid.UUID `json:"id,omitempty"`
-	FirstName string     `json:"first_name"`
-	LastName  string     `json:"last_name"`
-	Birthday  string     `json:"birthday"`
-	Status    string     `json:"status"`
-}
-
-func (p parentRecord) parent() Parent {
-	return Parent{Id: p.Id, FirstName: p.FirstName, LastName: p.LastName, Birthday: p.Birthday, Status: p.Status}
-}
 func (s *store) createParent(p Parent) (Parent, error) {
-	row, err := s.db.Create[parentRecord](parentTableName, parentRecord{Id: p.Id, FirstName: p.FirstName, LastName: p.LastName, Birthday: p.Birthday, Status: p.Status})
-	return row.parent(), err
+	row, err := s.db.Create[Parent](parentTableName, p)
+	return row, err
 }
 
 func (s *store) updatePatient(req UpdatePatientRequest, patientId, clinicId string) (Patient, error) {
@@ -80,14 +68,14 @@ func (s *store) updateParent(req UpdateParentRequest, parentId string) (Parent, 
 		Birthday  *string `json:"birthday,omitempty"`
 		Status    *string `json:"status,omitempty"`
 	}{req.ParentFirstName, req.ParentLastName, req.ParentBirthday, req.ParentStatus}
-	parentUpdated, err := s.db.UpdateById[parentRecord](parentTableName, parentId, patch)
+	parentUpdated, err := s.db.UpdateById[Parent](parentTableName, parentId, patch)
 	if err != nil {
 		if errors.Is(err, config.ErrorRecordNotFound) {
 			return Parent{}, ErrorParentNotFound
 		}
 		return Parent{}, err
 	}
-	return parentUpdated.parent(), nil
+	return parentUpdated, nil
 }
 
 func (s *store) deletePatient(patientId, clinicId string) (string, error) {

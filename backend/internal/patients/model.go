@@ -17,8 +17,8 @@ type Patient struct {
 
 type Parent struct {
 	Id        *uuid.UUID `json:"id,omitempty"`
-	FirstName string     `json:"firstname"`
-	LastName  string     `json:"lastname"`
+	FirstName string     `json:"first_name"`
+	LastName  string     `json:"last_name"`
 	Birthday  string     `json:"birthday"`
 	Status    string     `json:"status"`
 }
