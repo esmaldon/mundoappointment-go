@@ -189,7 +189,7 @@ func TestStoreMinorPatientAndParentCRUD(t *testing.T) {
 	if p.Id == nil || p.ParentId == nil {
 		t.Fatal("missing patient or parent UUID")
 	}
-	parent, err := s.db.FetchById[parentRecord](parentTableName, p.ParentId.String())
+	parent, err := s.db.FetchById[Parent](parentTableName, p.ParentId.String())
 	if err != nil || parent.Birthday != *req.ParentBirthday {
 		t.Fatalf("parent birthday=%q error=%v", parent.Birthday, err)
 	}
@@ -198,7 +198,7 @@ func TestStoreMinorPatientAndParentCRUD(t *testing.T) {
 	if err != nil || updated.FirstName != name {
 		t.Fatalf("parent update=%+v error=%v", updated, err)
 	}
-	fetched, err := s.db.FetchById[parentRecord](parentTableName, p.ParentId.String())
+	fetched, err := s.db.FetchById[Parent](parentTableName, p.ParentId.String())
 	if err != nil || fetched.FirstName != name || fetched.Birthday != *req.ParentBirthday {
 		t.Fatalf("persisted parent=%+v error=%v", fetched, err)
 	}
